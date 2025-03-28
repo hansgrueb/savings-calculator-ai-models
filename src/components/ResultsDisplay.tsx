@@ -13,34 +13,47 @@ import { ArrowDown, ArrowUp } from "lucide-react";
 import { formatCurrency, formatTokens } from "@/utils/calculationUtils";
 import { 
   AIModel,
-  Subscription,
-  UsageArea 
+  UsageArea,
+  ModelType
 } from "@/config/aiModelConfig";
+import { ModelUsage } from "@/components/ModelUsageInput";
 
 interface ResultsDisplayProps {
   selectedAreas: UsageArea[];
-  selectedModel: AIModel;
-  subscriptionCost: number;
-  promptsPerDay: number;
+  modelUsages: ModelUsage[];
+  totalSubscriptionCost: number;
   payAsYouGoCost: number;
   monthlySavings: number;
   savingsPercentage: number;
-  totalInputTokens: number;
-  totalOutputTokens: number;
+  tokenResults: {
+    textToText: { inputTokens: number, outputTokens: number },
+    textToImage: { inputTokens: number, outputTokens: number },
+    textToVideo: { inputTokens: number, outputTokens: number },
+    totalCost: number
+  };
 }
 
 const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   selectedAreas,
-  selectedModel,
-  subscriptionCost,
-  promptsPerDay,
+  modelUsages,
+  totalSubscriptionCost,
   payAsYouGoCost,
   monthlySavings,
   savingsPercentage,
-  totalInputTokens,
-  totalOutputTokens,
+  tokenResults,
 }) => {
   const isProfit = monthlySavings > 0;
+  
+  // Raggruppa i modelli per tipo
+  const modelsByType: Record<ModelType, ModelUsage[]> = {
+    "text-to-text": [],
+    "text-to-image": [],
+    "text-to-video": []
+  };
+  
+  modelUsages.forEach(usage => {
+    modelsByType[usage.model.type].push(usage);
+  });
 
   return (
     <div className="space-y-8">
@@ -48,7 +61,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
         <CardHeader className="pb-2">
           <CardTitle className="text-2xl">Risultato dell'analisi</CardTitle>
           <CardDescription>
-            Basato sugli ambiti, modello e utilizzo selezionati
+            Basato sugli ambiti, modelli e utilizzo selezionati
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -58,8 +71,8 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
               
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span>Abbonamento attuale:</span>
-                  <span className="font-semibold">{formatCurrency(subscriptionCost)}</span>
+                  <span>Abbonamenti attuali:</span>
+                  <span className="font-semibold">{formatCurrency(totalSubscriptionCost)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Costo a consumo stimato:</span>
@@ -97,34 +110,77 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
               </div>
             </div>
             
-            <div className="space-y-4">
+            <div className="space-y-6">
               <h3 className="text-lg font-medium">Dettagli utilizzo mensile</h3>
               
+              {modelsByType["text-to-text"].length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold">Modelli Text-to-Text</h4>
+                  <div className="flex justify-between">
+                    <span>Token di input:</span>
+                    <span className="font-semibold">{formatTokens(tokenResults.textToText.inputTokens)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Token di output:</span>
+                    <span className="font-semibold">{formatTokens(tokenResults.textToText.outputTokens)}</span>
+                  </div>
+                </div>
+              )}
+              
+              {modelsByType["text-to-image"].length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold">Modelli Text-to-Image</h4>
+                  <div className="flex justify-between">
+                    <span>Token di input:</span>
+                    <span className="font-semibold">{formatTokens(tokenResults.textToImage.inputTokens)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Token di output:</span>
+                    <span className="font-semibold">{formatTokens(tokenResults.textToImage.outputTokens)}</span>
+                  </div>
+                </div>
+              )}
+              
+              {modelsByType["text-to-video"].length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold">Modelli Text-to-Video</h4>
+                  <div className="flex justify-between">
+                    <span>Token di input:</span>
+                    <span className="font-semibold">{formatTokens(tokenResults.textToVideo.inputTokens)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Token di output:</span>
+                    <span className="font-semibold">{formatTokens(tokenResults.textToVideo.outputTokens)}</span>
+                  </div>
+                </div>
+              )}
+              
+              <Separator />
+              
               <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span>Prompt totali:</span>
-                  <span className="font-semibold">{promptsPerDay * 30}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Token di input:</span>
-                  <span className="font-semibold">{formatTokens(totalInputTokens)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Token di output:</span>
-                  <span className="font-semibold">{formatTokens(totalOutputTokens)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Costo input:</span>
-                  <span className="font-semibold">
-                    {formatCurrency((totalInputTokens / 1000) * selectedModel.inputCost)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Costo output:</span>
-                  <span className="font-semibold">
-                    {formatCurrency((totalOutputTokens / 1000) * selectedModel.outputCost)}
-                  </span>
-                </div>
+                <h4 className="text-sm font-semibold">Dettaglio modelli</h4>
+                {modelUsages.map((usage) => {
+                  // Trova le aree compatibili per questo modello
+                  const compatibleAreas = selectedAreas.filter(area => 
+                    area.modelTypes.includes(usage.model.type)
+                  );
+                  
+                  const promptsPerMonth = usage.promptsPerDay * 30;
+                  
+                  return (
+                    <div key={usage.id} className="py-2">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="font-medium">{usage.model.name}</span>
+                        <span>{usage.promptsPerDay} prompt/giorno × 30 = {promptsPerMonth} prompt/mese</span>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {compatibleAreas.length > 0 ? 
+                          `Utilizzato per: ${compatibleAreas.map(a => a.name).join(", ")}` : 
+                          "Nessun ambito compatibile selezionato"}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -132,13 +188,13 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
           <div className="mt-8 text-center">
             <h3 className="text-xl font-bold mb-2">
               {isProfit 
-                ? "Puoi risparmiare passando a un modello a consumo!" 
-                : "L'abbonamento è più conveniente per il tuo utilizzo."}
+                ? "Puoi risparmiare passando a modelli a consumo!" 
+                : "Gli abbonamenti sono più convenienti per il tuo utilizzo."}
             </h3>
             <p className="text-muted-foreground">
               {isProfit
-                ? `Risparmi ${formatCurrency(monthlySavings)} al mese (${formatCurrency(monthlySavings * 12)} all'anno) passando a un modello a consumo.`
-                : `L'abbonamento ti fa risparmiare ${formatCurrency(-monthlySavings)} al mese rispetto all'utilizzo a consumo.`}
+                ? `Risparmi ${formatCurrency(monthlySavings)} al mese (${formatCurrency(monthlySavings * 12)} all'anno) passando a modelli a consumo.`
+                : `Gli abbonamenti ti fanno risparmiare ${formatCurrency(-monthlySavings)} al mese rispetto all'utilizzo a consumo.`}
             </p>
           </div>
         </CardContent>

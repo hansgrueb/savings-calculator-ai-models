@@ -1,37 +1,129 @@
 
-import { UsageArea, AIModel, Subscription } from "@/config/aiModelConfig";
+import { UsageArea, AIModel, Subscription, ModelType } from "@/config/aiModelConfig";
+import { ModelUsage } from "@/components/ModelUsageInput";
 
 // Calcola i token totali mensili in base al numero di prompt al giorno e alle aree selezionate
 export const calculateMonthlyTokens = (
   selectedAreas: UsageArea[],
-  promptsPerDay: number
+  modelUsages: ModelUsage[]
 ) => {
   // Assumiamo 30 giorni in un mese per semplificare
   const daysInMonth = 30;
-  const totalPromptsPerMonth = promptsPerDay * daysInMonth;
   
-  // Calcolo della media di token per tutti gli ambiti selezionati
+  // Raggruppa i modelli per tipo
+  const modelsByType: Record<ModelType, ModelUsage[]> = {
+    "text-to-text": [],
+    "text-to-image": [],
+    "text-to-video": []
+  };
+  
+  modelUsages.forEach(usage => {
+    modelsByType[usage.model.type].push(usage);
+  });
+  
+  // Calcolo token per ogni tipo di modello
+  const results = {
+    textToText: { inputTokens: 0, outputTokens: 0 },
+    textToImage: { inputTokens: 0, outputTokens: 0 },
+    textToVideo: { inputTokens: 0, outputTokens: 0 },
+    totalCost: 0
+  };
+  
+  // Calcolo per text-to-text
+  if (modelsByType["text-to-text"].length > 0) {
+    // Filtra solo le aree compatibili con text-to-text
+    const textAreas = selectedAreas.filter(area => 
+      area.modelTypes.includes("text-to-text")
+    );
+    
+    modelsByType["text-to-text"].forEach(usage => {
+      const totalPromptsPerMonth = usage.promptsPerDay * daysInMonth;
+      
+      textAreas.forEach(area => {
+        results.textToText.inputTokens += area.avgInputTokens * totalPromptsPerMonth;
+        results.textToText.outputTokens += area.avgOutputTokens * totalPromptsPerMonth;
+      });
+      
+      // Calcola il costo per questo modello
+      const modelInputCost = (results.textToText.inputTokens / 1000) * usage.model.inputCost;
+      const modelOutputCost = (results.textToText.outputTokens / 1000) * usage.model.outputCost;
+      results.totalCost += modelInputCost + modelOutputCost;
+    });
+  }
+  
+  // Calcolo per text-to-image
+  if (modelsByType["text-to-image"].length > 0) {
+    // Filtra solo le aree compatibili con text-to-image
+    const imageAreas = selectedAreas.filter(area => 
+      area.modelTypes.includes("text-to-image")
+    );
+    
+    modelsByType["text-to-image"].forEach(usage => {
+      const totalPromptsPerMonth = usage.promptsPerDay * daysInMonth;
+      
+      imageAreas.forEach(area => {
+        results.textToImage.inputTokens += area.avgInputTokens * totalPromptsPerMonth;
+        results.textToImage.outputTokens += area.avgOutputTokens * totalPromptsPerMonth;
+      });
+      
+      // Calcola il costo per questo modello
+      const modelInputCost = (results.textToImage.inputTokens / 1000) * usage.model.inputCost;
+      const modelOutputCost = (results.textToImage.outputTokens / 1000) * usage.model.outputCost;
+      results.totalCost += modelInputCost + modelOutputCost;
+    });
+  }
+  
+  // Calcolo per text-to-video
+  if (modelsByType["text-to-video"].length > 0) {
+    // Filtra solo le aree compatibili con text-to-video
+    const videoAreas = selectedAreas.filter(area => 
+      area.modelTypes.includes("text-to-video")
+    );
+    
+    modelsByType["text-to-video"].forEach(usage => {
+      const totalPromptsPerMonth = usage.promptsPerDay * daysInMonth;
+      
+      videoAreas.forEach(area => {
+        results.textToVideo.inputTokens += area.avgInputTokens * totalPromptsPerMonth;
+        results.textToVideo.outputTokens += area.avgOutputTokens * totalPromptsPerMonth;
+      });
+      
+      // Calcola il costo per questo modello
+      const modelInputCost = (results.textToVideo.inputTokens / 1000) * usage.model.inputCost;
+      const modelOutputCost = (results.textToVideo.outputTokens / 1000) * usage.model.outputCost;
+      results.totalCost += modelInputCost + modelOutputCost;
+    });
+  }
+  
+  return results;
+};
+
+// Calcola il costo per un singolo modello
+export const calculateModelCost = (
+  modelUsage: ModelUsage,
+  compatibleAreas: UsageArea[]
+) => {
+  const daysInMonth = 30;
+  const totalPromptsPerMonth = modelUsage.promptsPerDay * daysInMonth;
+  
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
   
-  selectedAreas.forEach(area => {
+  compatibleAreas.forEach(area => {
     totalInputTokens += area.avgInputTokens * totalPromptsPerMonth;
     totalOutputTokens += area.avgOutputTokens * totalPromptsPerMonth;
   });
   
-  return { totalInputTokens, totalOutputTokens };
-};
-
-// Calcola il costo mensile a consumo in base ai token e al modello scelto
-export const calculatePayAsYouGoCost = (
-  inputTokens: number,
-  outputTokens: number,
-  model: AIModel
-) => {
-  const inputCost = (inputTokens / 1000) * model.inputCost;
-  const outputCost = (outputTokens / 1000) * model.outputCost;
+  const inputCost = (totalInputTokens / 1000) * modelUsage.model.inputCost;
+  const outputCost = (totalOutputTokens / 1000) * modelUsage.model.outputCost;
   
-  return inputCost + outputCost;
+  return {
+    inputTokens: totalInputTokens,
+    outputTokens: totalOutputTokens,
+    inputCost,
+    outputCost,
+    totalCost: inputCost + outputCost
+  };
 };
 
 // Calcola il risparmio mensile

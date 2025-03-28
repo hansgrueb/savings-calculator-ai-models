@@ -29,8 +29,9 @@ const UsageAreaSelector: React.FC<UsageAreaSelectorProps> = ({
 
   // Get icon component from Lucide icons
   const getIconComponent = (iconName: string) => {
-    const IconComponent = (LucideIcons as Record<string, React.FC<{ className?: string }>>)[iconName] || LucideIcons.HelpCircle;
-    return IconComponent;
+    // Using type assertion to safely access icon components
+    const IconComponent = LucideIcons[iconName as keyof typeof LucideIcons] as React.FC<{ className?: string }>;
+    return IconComponent || LucideIcons.HelpCircle;
   };
 
   return (

@@ -3,15 +3,13 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calculator, Sparkles } from "lucide-react";
-import { usageAreas, aiModels, subscriptions, type UsageArea, type AIModel, type Subscription } from "@/config/aiModelConfig";
+import { usageAreas, aiModels, subscriptions, type UsageArea } from "@/config/aiModelConfig";
 import UsageAreaSelector from "@/components/UsageAreaSelector";
-import AIModelSelector from "@/components/AIModelSelector";
 import SubscriptionSelector from "@/components/SubscriptionSelector";
-import PromptsPerDayInput from "@/components/PromptsPerDayInput";
 import ResultsDisplay from "@/components/ResultsDisplay";
+import ModelUsageInput, { ModelUsage } from "@/components/ModelUsageInput";
 import { 
-  calculateMonthlyTokens, 
-  calculatePayAsYouGoCost, 
+  calculateMonthlyTokens,
   calculateMonthlySavings,
   calculateSavingsPercentage
 } from "@/utils/calculationUtils";
@@ -19,17 +17,19 @@ import {
 const Index = () => {
   // Stati per i valori selezionati
   const [selectedAreas, setSelectedAreas] = useState<UsageArea[]>([]);
-  const [selectedModel, setSelectedModel] = useState<AIModel | null>(null);
-  const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null);
-  const [subscriptionCost, setSubscriptionCost] = useState(0);
-  const [promptsPerDay, setPromptsPerDay] = useState(10);
+  const [selectedModelUsages, setSelectedModelUsages] = useState<ModelUsage[]>([]);
+  const [totalSubscriptionCost, setTotalSubscriptionCost] = useState(0);
   
   // Stati per i risultati calcolati
-  const [totalInputTokens, setTotalInputTokens] = useState(0);
-  const [totalOutputTokens, setTotalOutputTokens] = useState(0);
   const [payAsYouGoCost, setPayAsYouGoCost] = useState(0);
   const [monthlySavings, setMonthlySavings] = useState(0);
   const [savingsPercentage, setSavingsPercentage] = useState(0);
+  const [tokenResults, setTokenResults] = useState({
+    textToText: { inputTokens: 0, outputTokens: 0 },
+    textToImage: { inputTokens: 0, outputTokens: 0 },
+    textToVideo: { inputTokens: 0, outputTokens: 0 },
+    totalCost: 0
+  });
   
   // Stato per controllare se mostrare i risultati
   const [showResults, setShowResults] = useState(false);
@@ -37,46 +37,53 @@ const Index = () => {
   // Controlla se tutti i campi sono compilati
   const isFormComplete = 
     selectedAreas.length > 0 && 
-    selectedModel !== null && 
-    selectedSubscription !== null && 
-    promptsPerDay > 0;
+    selectedModelUsages.length > 0 &&
+    totalSubscriptionCost > 0;
+  
+  // Gestisce l'aggiunta di un nuovo modello
+  const handleAddModelUsage = (modelUsage: ModelUsage) => {
+    setSelectedModelUsages([...selectedModelUsages, modelUsage]);
+  };
+  
+  // Gestisce la rimozione di un modello
+  const handleRemoveModelUsage = (id: string) => {
+    setSelectedModelUsages(selectedModelUsages.filter(usage => usage.id !== id));
+  };
+  
+  // Gestisce l'aggiornamento del numero di prompt al giorno
+  const handleUpdatePromptsPerDay = (id: string, promptsPerDay: number) => {
+    setSelectedModelUsages(selectedModelUsages.map(usage => 
+      usage.id === id ? { ...usage, promptsPerDay } : usage
+    ));
+  };
   
   // Calcola i risultati quando il form è completo
   useEffect(() => {
-    if (isFormComplete && selectedModel) {
-      // Calcola i token mensili
-      const { totalInputTokens, totalOutputTokens } = calculateMonthlyTokens(
+    if (isFormComplete) {
+      // Calcola i token mensili e costi totali
+      const results = calculateMonthlyTokens(
         selectedAreas,
-        promptsPerDay
+        selectedModelUsages
       );
       
-      // Aggiorna gli stati dei token
-      setTotalInputTokens(totalInputTokens);
-      setTotalOutputTokens(totalOutputTokens);
-      
-      // Calcola il costo mensile a consumo
-      const payAsYouGoCost = calculatePayAsYouGoCost(
-        totalInputTokens,
-        totalOutputTokens,
-        selectedModel
-      );
-      setPayAsYouGoCost(payAsYouGoCost);
+      setTokenResults(results);
+      setPayAsYouGoCost(results.totalCost);
       
       // Calcola il risparmio mensile
       const monthlySavings = calculateMonthlySavings(
-        subscriptionCost,
-        payAsYouGoCost
+        totalSubscriptionCost,
+        results.totalCost
       );
       setMonthlySavings(monthlySavings);
       
       // Calcola la percentuale di risparmio
       const savingsPercentage = calculateSavingsPercentage(
-        subscriptionCost,
-        payAsYouGoCost
+        totalSubscriptionCost,
+        results.totalCost
       );
       setSavingsPercentage(savingsPercentage);
     }
-  }, [selectedAreas, selectedModel, subscriptionCost, promptsPerDay, isFormComplete]);
+  }, [selectedAreas, selectedModelUsages, totalSubscriptionCost, isFormComplete]);
   
   // Gestisce il click sul bottone di calcolo
   const handleCalculate = () => {
@@ -98,67 +105,58 @@ const Index = () => {
         
         <Card className="mb-8 border shadow-md">
           <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-8">
-                <UsageAreaSelector
-                  areas={usageAreas}
-                  selectedAreas={selectedAreas}
-                  onChange={setSelectedAreas}
-                />
-                
-                <AIModelSelector
-                  models={aiModels}
-                  selectedModel={selectedModel}
-                  onChange={setSelectedModel}
-                />
-              </div>
+            <div className="grid grid-cols-1 gap-8">
+              <UsageAreaSelector
+                areas={usageAreas}
+                selectedAreas={selectedAreas}
+                onChange={setSelectedAreas}
+              />
               
-              <div className="space-y-8">
-                <SubscriptionSelector
-                  subscriptions={subscriptions}
-                  selectedSubscription={selectedSubscription}
-                  onSubscriptionChange={setSelectedSubscription}
-                  onCostChange={setSubscriptionCost}
-                />
+              <ModelUsageInput
+                models={aiModels}
+                selectedModelUsages={selectedModelUsages}
+                onAddModelUsage={handleAddModelUsage}
+                onRemoveModelUsage={handleRemoveModelUsage}
+                onUpdatePromptsPerDay={handleUpdatePromptsPerDay}
+              />
+              
+              <SubscriptionSelector
+                subscriptions={subscriptions}
+                selectedSubscription={null}
+                onSubscriptionChange={() => {}}
+                onCostChange={setTotalSubscriptionCost}
+              />
+              
+              <div className="pt-4">
+                <Button 
+                  onClick={handleCalculate}
+                  className="w-full bg-tech hover:bg-tech-dark text-white"
+                  size="lg"
+                  disabled={!isFormComplete}
+                >
+                  <Sparkles className="mr-2 h-5 w-5" />
+                  Calcola il tuo potenziale risparmio
+                </Button>
                 
-                <PromptsPerDayInput
-                  value={promptsPerDay}
-                  onChange={setPromptsPerDay}
-                />
-                
-                <div className="pt-4">
-                  <Button 
-                    onClick={handleCalculate}
-                    className="w-full bg-tech hover:bg-tech-dark text-white"
-                    size="lg"
-                    disabled={!isFormComplete}
-                  >
-                    <Sparkles className="mr-2 h-5 w-5" />
-                    Calcola il tuo potenziale risparmio
-                  </Button>
-                  
-                  {!isFormComplete && (
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Compila tutti i campi per calcolare il potenziale risparmio.
-                    </p>
-                  )}
-                </div>
+                {!isFormComplete && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Compila tutti i campi per calcolare il potenziale risparmio.
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>
         </Card>
         
-        {showResults && isFormComplete && selectedModel && (
+        {showResults && isFormComplete && (
           <ResultsDisplay
             selectedAreas={selectedAreas}
-            selectedModel={selectedModel}
-            subscriptionCost={subscriptionCost}
-            promptsPerDay={promptsPerDay}
+            modelUsages={selectedModelUsages}
+            totalSubscriptionCost={totalSubscriptionCost}
             payAsYouGoCost={payAsYouGoCost}
             monthlySavings={monthlySavings}
             savingsPercentage={savingsPercentage}
-            totalInputTokens={totalInputTokens}
-            totalOutputTokens={totalOutputTokens}
+            tokenResults={tokenResults}
           />
         )}
         
