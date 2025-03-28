@@ -1,12 +1,12 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Calculator, Sparkles } from "lucide-react";
+import { Calculator, Sparkles, BookOpen } from "lucide-react";
 import { usageAreas, aiModels, subscriptions, type UsageArea } from "@/config/aiModelConfig";
 import UsageAreaSelector from "@/components/UsageAreaSelector";
 import ResultsDisplay from "@/components/ResultsDisplay";
 import ModelUsageInput, { ModelUsage } from "@/components/ModelUsageInput";
+import { Link } from "react-router-dom";
 import { 
   calculateMonthlyTokens,
   calculateMonthlySavings,
@@ -174,11 +174,18 @@ const Index = () => {
           />
         )}
         
-        <footer className="mt-16 text-center text-sm text-muted-foreground">
-          <p>
+        <footer className="mt-16 text-center">
+          <p className="text-sm text-muted-foreground mb-6">
             Questo calcolatore fornisce stime basate sui dati medi di token per ambito di utilizzo.
             I risultati reali possono variare in base all'effettivo utilizzo.
           </p>
+          
+          <Link to="/scopri-calcolo">
+            <Button variant="outline" className="flex items-center gap-2 mx-auto">
+              <BookOpen className="h-5 w-5" />
+              Scopri il calcolo
+            </Button>
+          </Link>
         </footer>
       </div>
     </div>
