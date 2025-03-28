@@ -5,7 +5,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Calculator, Sparkles } from "lucide-react";
 import { usageAreas, aiModels, subscriptions, type UsageArea } from "@/config/aiModelConfig";
 import UsageAreaSelector from "@/components/UsageAreaSelector";
-import SubscriptionSelector from "@/components/SubscriptionSelector";
 import ResultsDisplay from "@/components/ResultsDisplay";
 import ModelUsageInput, { ModelUsage } from "@/components/ModelUsageInput";
 import { 
@@ -18,10 +17,10 @@ const Index = () => {
   // Stati per i valori selezionati
   const [selectedAreas, setSelectedAreas] = useState<UsageArea[]>([]);
   const [selectedModelUsages, setSelectedModelUsages] = useState<ModelUsage[]>([]);
-  const [totalSubscriptionCost, setTotalSubscriptionCost] = useState(0);
   
   // Stati per i risultati calcolati
   const [payAsYouGoCost, setPayAsYouGoCost] = useState(0);
+  const [totalSubscriptionCost, setTotalSubscriptionCost] = useState(0);
   const [monthlySavings, setMonthlySavings] = useState(0);
   const [savingsPercentage, setSavingsPercentage] = useState(0);
   const [tokenResults, setTokenResults] = useState({
@@ -37,8 +36,7 @@ const Index = () => {
   // Controlla se tutti i campi sono compilati
   const isFormComplete = 
     selectedAreas.length > 0 && 
-    selectedModelUsages.length > 0 &&
-    totalSubscriptionCost > 0;
+    selectedModelUsages.length > 0;
   
   // Gestisce l'aggiunta di un nuovo modello
   const handleAddModelUsage = (modelUsage: ModelUsage) => {
@@ -56,6 +54,27 @@ const Index = () => {
       usage.id === id ? { ...usage, promptsPerDay } : usage
     ));
   };
+
+  // Gestisce l'aggiornamento dell'abbonamento per un modello
+  const handleUpdateSubscription = (id: string, subscription: {
+    id: string;
+    name: string;
+    monthlyCost: number;
+    provider: string;
+  }) => {
+    setSelectedModelUsages(selectedModelUsages.map(usage => 
+      usage.id === id ? { ...usage, subscription } : usage
+    ));
+  };
+  
+  // Calcola il costo totale degli abbonamenti
+  useEffect(() => {
+    const total = selectedModelUsages.reduce((sum, usage) => {
+      return sum + (usage.subscription?.monthlyCost || 0);
+    }, 0);
+    
+    setTotalSubscriptionCost(total);
+  }, [selectedModelUsages]);
   
   // Calcola i risultati quando il form è completo
   useEffect(() => {
@@ -114,17 +133,12 @@ const Index = () => {
               
               <ModelUsageInput
                 models={aiModels}
+                subscriptions={subscriptions}
                 selectedModelUsages={selectedModelUsages}
                 onAddModelUsage={handleAddModelUsage}
                 onRemoveModelUsage={handleRemoveModelUsage}
                 onUpdatePromptsPerDay={handleUpdatePromptsPerDay}
-              />
-              
-              <SubscriptionSelector
-                subscriptions={subscriptions}
-                selectedSubscription={null}
-                onSubscriptionChange={() => {}}
-                onCostChange={setTotalSubscriptionCost}
+                onUpdateSubscription={handleUpdateSubscription}
               />
               
               <div className="pt-4">

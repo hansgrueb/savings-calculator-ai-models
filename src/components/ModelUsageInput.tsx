@@ -1,6 +1,6 @@
 
-import React from "react";
-import { AIModel } from "@/config/aiModelConfig";
+import React, { useState } from "react";
+import { AIModel, Subscription } from "@/config/aiModelConfig";
 import { 
   Select,
   SelectContent,
@@ -17,25 +17,31 @@ export type ModelUsage = {
   id: string;
   model: AIModel;
   promptsPerDay: number;
+  subscription: Subscription | null;
 };
 
 interface ModelUsageInputProps {
   models: AIModel[];
+  subscriptions: Subscription[];
   selectedModelUsages: ModelUsage[];
   onAddModelUsage: (modelUsage: ModelUsage) => void;
   onRemoveModelUsage: (id: string) => void;
   onUpdatePromptsPerDay: (id: string, promptsPerDay: number) => void;
+  onUpdateSubscription: (id: string, subscription: Subscription) => void;
 }
 
 const ModelUsageInput: React.FC<ModelUsageInputProps> = ({
   models,
+  subscriptions,
   selectedModelUsages,
   onAddModelUsage,
   onRemoveModelUsage,
   onUpdatePromptsPerDay,
+  onUpdateSubscription,
 }) => {
-  const [selectedModelId, setSelectedModelId] = React.useState<string>("");
-  const [promptsPerDay, setPromptsPerDay] = React.useState<number>(10);
+  const [selectedModelId, setSelectedModelId] = useState<string>("");
+  const [promptsPerDay, setPromptsPerDay] = useState<number>(10);
+  const [selectedSubscriptionId, setSelectedSubscriptionId] = useState<string>("");
 
   const handleAddModel = () => {
     if (!selectedModelId) return;
@@ -43,10 +49,15 @@ const ModelUsageInput: React.FC<ModelUsageInputProps> = ({
     const selectedModel = models.find(m => m.id === selectedModelId);
     if (!selectedModel) return;
     
+    const selectedSubscription = selectedSubscriptionId ? 
+      subscriptions.find(s => s.id === selectedSubscriptionId) || null : 
+      null;
+    
     const newModelUsage: ModelUsage = {
       id: `${selectedModelId}-${Date.now()}`, // Unique ID
       model: selectedModel,
       promptsPerDay,
+      subscription: selectedSubscription,
     };
     
     onAddModelUsage(newModelUsage);
@@ -54,6 +65,7 @@ const ModelUsageInput: React.FC<ModelUsageInputProps> = ({
     // Reset selection
     setSelectedModelId("");
     setPromptsPerDay(10);
+    setSelectedSubscriptionId("");
   };
 
   const handlePromptsChange = (e: React.ChangeEvent<HTMLInputElement>, id: string) => {
@@ -63,9 +75,37 @@ const ModelUsageInput: React.FC<ModelUsageInputProps> = ({
     }
   };
 
+  const handleSubscriptionChange = (id: string, subscriptionId: string) => {
+    const subscription = subscriptions.find(s => s.id === subscriptionId);
+    if (subscription) {
+      onUpdateSubscription(id, subscription);
+    }
+  };
+
   const availableModels = models.filter(model => 
     !selectedModelUsages.some(usage => usage.model.id === model.id)
   );
+
+  const getFilteredSubscriptions = (modelType: string) => {
+    // Filter subscriptions based on model type
+    // For text-to-text models: OpenAI, Anthropic, Perplexity subscriptions
+    // For image models: Midjourney subscriptions
+    // For video models: Runway subscriptions
+    let providers: string[] = [];
+    
+    if (modelType === "text-to-text") {
+      providers = ["OpenAI", "Anthropic", "Perplexity"];
+    } else if (modelType === "text-to-image") {
+      providers = ["OpenAI", "Midjourney"];
+    } else if (modelType === "text-to-video") {
+      providers = ["OpenAI", "Runway"];
+    }
+    
+    // Always include custom subscription
+    return subscriptions.filter(sub => 
+      providers.includes(sub.provider) || sub.id === "custom"
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -90,15 +130,34 @@ const ModelUsageInput: React.FC<ModelUsageInputProps> = ({
                 </div>
               </div>
               
-              <div className="flex items-center space-x-2">
-                <span className="text-sm whitespace-nowrap">Prompt al giorno:</span>
-                <Input 
-                  type="number"
-                  min={1}
-                  value={usage.promptsPerDay}
-                  onChange={(e) => handlePromptsChange(e, usage.id)}
-                  className="w-20"
-                />
+              <div className="flex items-center space-x-3">
+                <Select
+                  value={usage.subscription?.id || ""}
+                  onValueChange={(value) => handleSubscriptionChange(usage.id, value)}
+                >
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Abbonamento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Nessun abbonamento</SelectItem>
+                    {getFilteredSubscriptions(usage.model.type).map(sub => (
+                      <SelectItem key={sub.id} value={sub.id}>
+                        {sub.name} ({formatCurrency(sub.monthlyCost)})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm whitespace-nowrap">Prompt al giorno:</span>
+                  <Input 
+                    type="number"
+                    min={1}
+                    value={usage.promptsPerDay}
+                    onChange={(e) => handlePromptsChange(e, usage.id)}
+                    className="w-20"
+                  />
+                </div>
               </div>
               
               <Button 
@@ -146,6 +205,29 @@ const ModelUsageInput: React.FC<ModelUsageInputProps> = ({
             </SelectContent>
           </Select>
         </div>
+        
+        {selectedModelId && (
+          <div className="w-44">
+            <Select
+              value={selectedSubscriptionId}
+              onValueChange={setSelectedSubscriptionId}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Abbonamento" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Nessun abbonamento</SelectItem>
+                {getFilteredSubscriptions(
+                  models.find(m => m.id === selectedModelId)?.type || "text-to-text"
+                ).map((sub) => (
+                  <SelectItem key={sub.id} value={sub.id}>
+                    {sub.name} ({formatCurrency(sub.monthlyCost)})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         
         <div className="w-32">
           <Input
