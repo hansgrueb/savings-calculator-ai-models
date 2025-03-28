@@ -63,7 +63,7 @@ const Index = () => {
     provider: string;
   }) => {
     setSelectedModelUsages(selectedModelUsages.map(usage => 
-      usage.id === id ? { ...usage, subscription } : usage
+      usage.id === id ? { ...usage, subscription: subscription.id ? subscription : null } : usage
     ));
   };
   

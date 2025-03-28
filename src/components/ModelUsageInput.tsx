@@ -41,7 +41,7 @@ const ModelUsageInput: React.FC<ModelUsageInputProps> = ({
 }) => {
   const [selectedModelId, setSelectedModelId] = useState<string>("");
   const [promptsPerDay, setPromptsPerDay] = useState<number>(10);
-  const [selectedSubscriptionId, setSelectedSubscriptionId] = useState<string>("");
+  const [selectedSubscriptionId, setSelectedSubscriptionId] = useState<string>("none");
 
   const handleAddModel = () => {
     if (!selectedModelId) return;
@@ -49,7 +49,7 @@ const ModelUsageInput: React.FC<ModelUsageInputProps> = ({
     const selectedModel = models.find(m => m.id === selectedModelId);
     if (!selectedModel) return;
     
-    const selectedSubscription = selectedSubscriptionId ? 
+    const selectedSubscription = selectedSubscriptionId && selectedSubscriptionId !== "none" ? 
       subscriptions.find(s => s.id === selectedSubscriptionId) || null : 
       null;
     
@@ -65,7 +65,7 @@ const ModelUsageInput: React.FC<ModelUsageInputProps> = ({
     // Reset selection
     setSelectedModelId("");
     setPromptsPerDay(10);
-    setSelectedSubscriptionId("");
+    setSelectedSubscriptionId("none");
   };
 
   const handlePromptsChange = (e: React.ChangeEvent<HTMLInputElement>, id: string) => {
@@ -76,6 +76,17 @@ const ModelUsageInput: React.FC<ModelUsageInputProps> = ({
   };
 
   const handleSubscriptionChange = (id: string, subscriptionId: string) => {
+    if (subscriptionId === "none") {
+      // Handle removal of subscription
+      onUpdateSubscription(id, {
+        id: "",
+        name: "",
+        monthlyCost: 0,
+        provider: ""
+      });
+      return;
+    }
+    
     const subscription = subscriptions.find(s => s.id === subscriptionId);
     if (subscription) {
       onUpdateSubscription(id, subscription);
@@ -132,14 +143,14 @@ const ModelUsageInput: React.FC<ModelUsageInputProps> = ({
               
               <div className="flex items-center space-x-3">
                 <Select
-                  value={usage.subscription?.id || ""}
+                  value={usage.subscription?.id || "none"}
                   onValueChange={(value) => handleSubscriptionChange(usage.id, value)}
                 >
                   <SelectTrigger className="w-40">
                     <SelectValue placeholder="Abbonamento" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nessun abbonamento</SelectItem>
+                    <SelectItem value="none">Nessun abbonamento</SelectItem>
                     {getFilteredSubscriptions(usage.model.type).map(sub => (
                       <SelectItem key={sub.id} value={sub.id}>
                         {sub.name} ({formatCurrency(sub.monthlyCost)})
@@ -185,7 +196,7 @@ const ModelUsageInput: React.FC<ModelUsageInputProps> = ({
             </SelectTrigger>
             <SelectContent>
               {availableModels.length === 0 ? (
-                <SelectItem value="none" disabled>Hai selezionato tutti i modelli disponibili</SelectItem>
+                <SelectItem value="no_models" disabled>Hai selezionato tutti i modelli disponibili</SelectItem>
               ) : (
                 availableModels.map((model) => (
                   <SelectItem key={model.id} value={model.id}>
@@ -216,7 +227,7 @@ const ModelUsageInput: React.FC<ModelUsageInputProps> = ({
                 <SelectValue placeholder="Abbonamento" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Nessun abbonamento</SelectItem>
+                <SelectItem value="none">Nessun abbonamento</SelectItem>
                 {getFilteredSubscriptions(
                   models.find(m => m.id === selectedModelId)?.type || "text-to-text"
                 ).map((sub) => (
