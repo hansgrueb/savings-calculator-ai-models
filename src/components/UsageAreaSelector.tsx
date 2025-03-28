@@ -3,7 +3,7 @@ import React from "react";
 import { UsageArea } from "@/config/aiModelConfig";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import dynamic from "next/dynamic";
+import * as LucideIcons from "lucide-react";
 
 interface UsageAreaSelectorProps {
   areas: UsageArea[];
@@ -27,10 +27,10 @@ const UsageAreaSelector: React.FC<UsageAreaSelectorProps> = ({
     }
   };
 
-  // Dynamic import for Lucide icons
+  // Get icon component from Lucide icons
   const getIconComponent = (iconName: string) => {
-    const Icon = dynamic(() => import(`lucide-react`).then((mod) => mod[iconName]));
-    return Icon;
+    const IconComponent = (LucideIcons as Record<string, React.FC<{ className?: string }>>)[iconName] || LucideIcons.HelpCircle;
+    return IconComponent;
   };
 
   return (
