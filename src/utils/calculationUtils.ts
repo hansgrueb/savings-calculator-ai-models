@@ -1,4 +1,3 @@
-
 import { UsageArea, AIModel, Subscription, ModelType } from "@/config/aiModelConfig";
 import { ModelUsage } from "@/components/ModelUsageInput";
 
@@ -36,19 +35,24 @@ export const calculateMonthlyTokens = (
       area.modelTypes.includes("text-to-text")
     );
     
-    modelsByType["text-to-text"].forEach(usage => {
-      const totalPromptsPerMonth = usage.promptsPerDay * daysInMonth;
-      
-      textAreas.forEach(area => {
-        results.textToText.inputTokens += area.avgInputTokens * totalPromptsPerMonth;
-        results.textToText.outputTokens += area.avgOutputTokens * totalPromptsPerMonth;
+    if (textAreas.length > 0) {
+      modelsByType["text-to-text"].forEach(usage => {
+        const totalPromptsPerMonth = usage.promptsPerDay * daysInMonth;
+        
+        // Calcola la media dei token di input e output per le aree selezionate
+        const avgInputTokens = textAreas.reduce((sum, area) => sum + area.avgInputTokens, 0) / textAreas.length;
+        const avgOutputTokens = textAreas.reduce((sum, area) => sum + area.avgOutputTokens, 0) / textAreas.length;
+        
+        // Moltiplica per il numero di prompt mensili
+        results.textToText.inputTokens = avgInputTokens * totalPromptsPerMonth;
+        results.textToText.outputTokens = avgOutputTokens * totalPromptsPerMonth;
+        
+        // Calcola il costo per questo modello
+        const modelInputCost = (results.textToText.inputTokens / 1000) * usage.model.inputCost;
+        const modelOutputCost = (results.textToText.outputTokens / 1000) * usage.model.outputCost;
+        results.totalCost += modelInputCost + modelOutputCost;
       });
-      
-      // Calcola il costo per questo modello
-      const modelInputCost = (results.textToText.inputTokens / 1000) * usage.model.inputCost;
-      const modelOutputCost = (results.textToText.outputTokens / 1000) * usage.model.outputCost;
-      results.totalCost += modelInputCost + modelOutputCost;
-    });
+    }
   }
   
   // Calcolo per text-to-image
@@ -58,19 +62,24 @@ export const calculateMonthlyTokens = (
       area.modelTypes.includes("text-to-image")
     );
     
-    modelsByType["text-to-image"].forEach(usage => {
-      const totalPromptsPerMonth = usage.promptsPerDay * daysInMonth;
-      
-      imageAreas.forEach(area => {
-        results.textToImage.inputTokens += area.avgInputTokens * totalPromptsPerMonth;
-        results.textToImage.outputTokens += area.avgOutputTokens * totalPromptsPerMonth;
+    if (imageAreas.length > 0) {
+      modelsByType["text-to-image"].forEach(usage => {
+        const totalPromptsPerMonth = usage.promptsPerDay * daysInMonth;
+        
+        // Calcola la media dei token di input e output per le aree selezionate
+        const avgInputTokens = imageAreas.reduce((sum, area) => sum + area.avgInputTokens, 0) / imageAreas.length;
+        const avgOutputTokens = imageAreas.reduce((sum, area) => sum + area.avgOutputTokens, 0) / imageAreas.length;
+        
+        // Moltiplica per il numero di prompt mensili
+        results.textToImage.inputTokens = avgInputTokens * totalPromptsPerMonth;
+        results.textToImage.outputTokens = avgOutputTokens * totalPromptsPerMonth;
+        
+        // Calcola il costo per questo modello
+        const modelInputCost = (results.textToImage.inputTokens / 1000) * usage.model.inputCost;
+        const modelOutputCost = (results.textToImage.outputTokens / 1000) * usage.model.outputCost;
+        results.totalCost += modelInputCost + modelOutputCost;
       });
-      
-      // Calcola il costo per questo modello
-      const modelInputCost = (results.textToImage.inputTokens / 1000) * usage.model.inputCost;
-      const modelOutputCost = (results.textToImage.outputTokens / 1000) * usage.model.outputCost;
-      results.totalCost += modelInputCost + modelOutputCost;
-    });
+    }
   }
   
   // Calcolo per text-to-video
@@ -80,19 +89,24 @@ export const calculateMonthlyTokens = (
       area.modelTypes.includes("text-to-video")
     );
     
-    modelsByType["text-to-video"].forEach(usage => {
-      const totalPromptsPerMonth = usage.promptsPerDay * daysInMonth;
-      
-      videoAreas.forEach(area => {
-        results.textToVideo.inputTokens += area.avgInputTokens * totalPromptsPerMonth;
-        results.textToVideo.outputTokens += area.avgOutputTokens * totalPromptsPerMonth;
+    if (videoAreas.length > 0) {
+      modelsByType["text-to-video"].forEach(usage => {
+        const totalPromptsPerMonth = usage.promptsPerDay * daysInMonth;
+        
+        // Calcola la media dei token di input e output per le aree selezionate
+        const avgInputTokens = videoAreas.reduce((sum, area) => sum + area.avgInputTokens, 0) / videoAreas.length;
+        const avgOutputTokens = videoAreas.reduce((sum, area) => sum + area.avgOutputTokens, 0) / videoAreas.length;
+        
+        // Moltiplica per il numero di prompt mensili
+        results.textToVideo.inputTokens = avgInputTokens * totalPromptsPerMonth;
+        results.textToVideo.outputTokens = avgOutputTokens * totalPromptsPerMonth;
+        
+        // Calcola il costo per questo modello
+        const modelInputCost = (results.textToVideo.inputTokens / 1000) * usage.model.inputCost;
+        const modelOutputCost = (results.textToVideo.outputTokens / 1000) * usage.model.outputCost;
+        results.totalCost += modelInputCost + modelOutputCost;
       });
-      
-      // Calcola il costo per questo modello
-      const modelInputCost = (results.textToVideo.inputTokens / 1000) * usage.model.inputCost;
-      const modelOutputCost = (results.textToVideo.outputTokens / 1000) * usage.model.outputCost;
-      results.totalCost += modelInputCost + modelOutputCost;
-    });
+    }
   }
   
   return results;
